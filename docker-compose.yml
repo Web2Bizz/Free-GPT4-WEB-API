@@ -5,4 +5,12 @@ services:
     user: www-data
     ports:
       - "15432:5500"
+    volumes:
+      - "./src/data:/app/src/data:rw"
+    networks:
+      - "app_net"
     command: --remove-sources --provider You --cookie-file /app/src/data/cookies.json
+
+networks:
+  app_net:
+    external: true
