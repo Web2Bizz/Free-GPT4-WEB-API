@@ -1,20 +1,92 @@
-version: "3.9"
 services:
-  api:
-    build: .
-    user: www-data
+  # Nginx reverse proxy (in both external and internal networks)
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
-      - "15432:5500"
+      - "15432:15432"
     volumes:
-      - "./src/data:/app/src/data:rw"
+      - "./logs/nginx:/var/log/nginx:rw"
+      - "./nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
+    depends_on:
+      - api1
+      - api2
+    networks:
+      - external
+      - internal
+    restart: unless-stopped
+
+  # First API replica (internal network only)
+  api1:
+    build:
+      context: ./llm-api-service
+      dockerfile: Dockerfile
+    volumes:
+      - "./llm-api-service/data:/app/data:rw"
       - "./logs:/app/logs:rw"
     networks:
-      - "app_net"
+      - internal
     environment:
-      - LOG_LEVEL=INFO
-      - LOG_FILE=/app/logs/freegpt4.log
-    command: --remove-sources --provider You --cookie-file /app/src/data/cookies.json --log-level INFO --log-file /app/logs/freegpt4.log --enable-request-logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=${LOG_FILE:-/app/logs/freegpt4-api1.log}
+      - ENABLE_REQUEST_LOGGING=${ENABLE_REQUEST_LOGGING:-false}
+      - PRIVATE_MODE=${PRIVATE_MODE:-false}
+      - COOKIE_FILE=${COOKIE_FILE:-/app/data/cookies.json}
+      - PROVIDER=${PROVIDER:-You}
+      - REMOVE_SOURCES=${REMOVE_SOURCES:-true}
+    command: [
+      "python", "-m", "freegpt4.FreeGPT4_Server",
+      "--log-level", "${LOG_LEVEL:-INFO}",
+      "--log-file", "${LOG_FILE:-/app/logs/freegpt4-api1.log}",
+      "--cookie-file", "${COOKIE_FILE:-/app/data/cookies.json}",
+      "--provider", "${PROVIDER:-You}"
+    ]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5500/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Second API replica (internal network only)
+  api2:
+    build:
+      context: ./llm-api-service
+      dockerfile: Dockerfile
+    volumes:
+      - "./llm-api-service/data:/app/data:rw"
+      - "./logs:/app/logs:rw"
+    networks:
+      - internal
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=${LOG_FILE:-/app/logs/freegpt4-api2.log}
+      - ENABLE_REQUEST_LOGGING=${ENABLE_REQUEST_LOGGING:-false}
+      - PRIVATE_MODE=${PRIVATE_MODE:-false}
+      - COOKIE_FILE=${COOKIE_FILE:-/app/data/cookies.json}
+      - PROVIDER=${PROVIDER:-You}
+      - REMOVE_SOURCES=${REMOVE_SOURCES:-true}
+    command: [
+      "python", "-m", "freegpt4.FreeGPT4_Server",
+      "--log-level", "${LOG_LEVEL:-INFO}",
+      "--log-file", "${LOG_FILE:-/app/logs/freegpt4-api2.log}",
+      "--cookie-file", "${COOKIE_FILE:-/app/data/cookies.json}",
+      "--provider", "${PROVIDER:-You}"
+    ]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5500/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 
 networks:
-  app_net:
-    external: true
+  external:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true
