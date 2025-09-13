@@ -71,15 +71,13 @@ class AIService:
                     "message_history": use_history and settings.get("message_history", False)
                 }
             else:
-                user_data = self.db.get_user_by_username(username)
-                if not user_data:
-                    raise ValidationError(f"User '{username}' not found")
-                
+                # For any other username, use default settings
+                settings = self.db.get_settings()
                 user_settings = {
-                    "provider": provider or user_data.get("provider", self.config.api.default_provider),
-                    "model": model or user_data.get("model", self.config.api.default_model),
-                    "system_prompt": system_prompt or user_data.get("system_prompt", ""),
-                    "message_history": use_history and user_data.get("message_history", False)
+                    "provider": provider or settings.get("provider", self.config.api.default_provider),
+                    "model": model or settings.get("model", self.config.api.default_model),
+                    "system_prompt": system_prompt or settings.get("system_prompt", ""),
+                    "message_history": use_history and settings.get("message_history", False)
                 }
             
             # Validate provider and model
