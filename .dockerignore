@@ -54,8 +54,15 @@ docs/
 *.md
 
 # Local data (these should be mounted as volumes)
-src/data/*.db
-src/data/*.json
+llm-api-service/data/*.db
+llm-api-service/data/*.json
+
+# Cluster specific files
+docker-compose.yml
+CLUSTER_ARCHITECTURE.md
+scripts/
+nginx/
+certbot/
 
 # Temporary files
 tmp/

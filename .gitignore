@@ -91,11 +91,25 @@ tmp/
 .dockerignore
 
 # Local data and cookies
-src/data/cookies.json
-src/data/proxies.json
-src/data/*.db
+llm-api-service/data/cookies.json
+llm-api-service/data/proxies.json
+llm-api-service/data/*.db
 
 # Test artifacts
 .coverage
 .pytest_cache/
 test-results/
+
+# SSL certificates
+certbot/
+*.pem
+*.crt
+*.key
+
+# Nginx logs
+logs/nginx/
+
+# Environment files
+.env
+.env.local
+.env.production
