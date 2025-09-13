@@ -39,9 +39,9 @@ WORKDIR /app
 # Copy application code
 COPY --chown=freegpt:freegpt . .
 
-# Create data directory with proper permissions
-# RUN mkdir -p /app/src/data && \
-#    chown -R freegpt:freegpt /app
+# Create data and logs directories with proper permissions
+RUN mkdir -p /app/src/data /app/logs && \
+    chown -R freegpt:freegpt /app
 
 # Switch to non-root user
 USER freegpt
