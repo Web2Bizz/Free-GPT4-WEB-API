@@ -38,8 +38,13 @@ Note: The demo server, when available, can be overloaded and may not always resp
   - Proxies
   - Models and providers
   - Private mode and password
-- Siri integration
-- Requirements
+  - Siri integration
+  - Cluster Architecture
+    - Load balancing
+    - Network isolation
+    - High availability
+    - SSL/TLS support
+  - Requirements
 - Star history
 - Contributing
 - License
@@ -78,17 +83,42 @@ docker run \
 docker run -p YOUR_PORT:5500 d0ckmg/free-gpt4-web-api:latest
 ```
 
-- docker-compose.yml:
-```yaml
-version: "3.9"
-services:
-  api:
-    image: "d0ckmg/free-gpt4-web-api:latest"
-    ports:
-      - "YOUR_PORT:5500"
-    #volumes:
-    #  - /path/to/your/cookies.json:/cookies.json:ro
-```
+- docker-compose.yml (cluster with load balancing):
+  ```yaml
+  version: "3.9"
+  services:
+    nginx:
+      build:
+        context: .
+        dockerfile: nginx/Dockerfile
+      ports:
+        - "80:80"
+        - "443:443"
+      networks:
+        - external
+        - internal
+    
+    api1:
+      build:
+        context: ./llm-api-service
+        dockerfile: Dockerfile
+      networks:
+        - internal
+    
+    api2:
+      build:
+        context: ./llm-api-service
+        dockerfile: Dockerfile
+      networks:
+        - internal
+  
+  networks:
+    external:
+      driver: bridge
+    internal:
+      driver: bridge
+      internal: true
+  ```
 
 Note:
 - If you plan to use the Web GUI in Docker, set a password (see “Command-line options”).
@@ -272,8 +302,49 @@ python3 src/FreeGPT4_Server.py --log-level INFO
 python3 src/FreeGPT4_Server.py --log-file ./logs/api.log --enable-request-logging
 
 # Docker with logging
-docker-compose -f docker-compose.dev.yml up -d
+  docker-compose -f docker-compose.dev.yml up -d
+  ```
+
+---
+
+## Cluster Architecture
+
+### High Availability Setup
+
+The project now supports a cluster architecture with load balancing and network isolation:
+
+```bash
+# Start cluster with load balancing
+chmod +x scripts/start-cluster.sh
+./scripts/start-cluster.sh
+
+# Start cluster with SSL
+chmod +x scripts/start-cluster-ssl.sh
+./scripts/start-cluster-ssl.sh api.example.com admin@example.com
+
+# Monitor cluster
+chmod +x scripts/monitor-cluster.sh
+./scripts/monitor-cluster.sh
 ```
+
+### Features
+
+- **2 LLM API replicas** in isolated internal network
+- **Nginx reverse proxy** with load balancing
+- **Network isolation** - APIs not accessible from outside
+- **SSL/TLS support** with Let's Encrypt
+- **Health checks** and automatic failover
+- **Rate limiting** and security headers
+- **Modular structure** - Python app in `llm-api-service/` directory
+
+### Architecture
+
+```
+Internet → Nginx (external/internal) → LLM API 1 (internal)
+                                → LLM API 2 (internal)
+```
+
+See `CLUSTER_ARCHITECTURE.md` for detailed documentation.
 
 ---
 
