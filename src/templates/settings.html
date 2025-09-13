@@ -183,6 +183,65 @@
                     </b>
                 </td>
             </tr>
+            
+            <!-- Logging Settings -->
+            <h3 class="title blue text-xl mt-8">Logging</h3>
+            <tr>
+                <td class="py-1 fond-bold inter darkblue text-lg border-b border-slate-800" id="set_log_level">
+                    <b>Log Level:</b>
+                </td>
+                <td class="py-1 fond-bold inter darkblue text-lg">
+                    <select id="log_level" name="log_level" class="input outline-none py-1 px-2 rounded-lg inter w-32">
+                        <option value="DEBUG" {% if data.get('log_level', 'INFO') == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                        <option value="INFO" {% if data.get('log_level', 'INFO') == 'INFO' %}selected{% endif %}>INFO</option>
+                        <option value="WARNING" {% if data.get('log_level', 'INFO') == 'WARNING' %}selected{% endif %}>WARNING</option>
+                        <option value="ERROR" {% if data.get('log_level', 'INFO') == 'ERROR' %}selected{% endif %}>ERROR</option>
+                        <option value="CRITICAL" {% if data.get('log_level', 'INFO') == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td class="py-1 fond-bold inter darkblue text-lg border-b border-slate-800" id="set_log_file">
+                    <b>Log to File:</b>
+                    <br>
+                    <input type="text" id="log_file" name="log_file" class="input outline-none py-1 px-2 rounded-lg inter w-64 mt-2" placeholder="Leave empty to disable file logging" value="{{ data.get('log_file', '') }}">
+                </td>
+                <td class="py-1 fond-bold inter darkblue text-lg">
+                    <p class="text-sm text-gray-600">Optional file path for logging</p>
+                </td>
+            </tr>
+            <tr>
+                <td class="py-1 fond-bold inter darkblue text-lg border-b border-slate-800" id="set_log_format">
+                    <b>Log Format:</b>
+                    <br>
+                    <input type="text" id="log_format" name="log_format" class="input outline-none py-1 px-2 rounded-lg inter w-96 mt-2" placeholder="Custom log format" value="{{ data.get('log_format', '[%(asctime)s] %(levelname)s in %(name)s: %(message)s') }}">
+                </td>
+                <td class="py-1 fond-bold inter darkblue text-lg">
+                    <p class="text-sm text-gray-600">Custom format for log messages</p>
+                </td>
+            </tr>
+            <tr>
+                <td class="py-1 fond-bold inter darkblue text-lg border-b border-slate-800" id="set_request_logging">
+                    <b>Request Logging:</b>
+                    <br>
+                    <p class="text-sm text-gray-600">Log detailed information about API requests</p>
+                </td>
+                <td class="py-1 fond-bold inter darkblue text-lg">
+                {% if data.get('enable_request_logging', False) %}
+                    <input type="radio" id="off_rad_request_logging" name="enable_request_logging" value="false" class="hidden" oninput="turnOff('on_request_logging', 'off_request_logging', 'set_request_logging')">
+                    <label for="off_rad_request_logging" id="off_request_logging" class="label_gray"><b>OFF</b></label>
+                    <p class="inline-block mx-1"> - </p>
+                    <input type="radio" id="on_rad_request_logging" name="enable_request_logging" value="true" class="hidden" oninput="turnOn('on_request_logging', 'off_request_logging', 'set_request_logging')" checked>
+                    <label for="on_rad_request_logging" id="on_request_logging" class="label_green"><b>ON</b></label>
+                {% else %}
+                    <input type="radio" id="off_rad_request_logging" name="enable_request_logging" value="false" class="hidden" oninput="turnOff('on_request_logging', 'off_request_logging', 'set_request_logging')" checked>
+                    <label for="off_rad_request_logging" id="off_request_logging" class="label_red"><b>OFF</b></label>
+                    <p class="inline-block mx-1"> - </p>
+                    <input type="radio" id="on_rad_request_logging" name="enable_request_logging" value="true" class="hidden" oninput="turnOn('on_request_logging', 'off_request_logging', 'set_request_logging')">
+                    <label for="on_rad_request_logging" id="on_request_logging" class="label_gray"><b>ON</b></label>
+                {% endif %}
+                </td>
+            </tr>
         {% else %}
             <tr>
                 <td class="py-1 fond-bold inter darkblue text-lg border-b border-slate-800" id="set_3">

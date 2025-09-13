@@ -179,6 +179,7 @@ python3 src/FreeGPT4_Server.py [-h] [--remove-sources] [--enable-gui]
                                 [--cookie-file COOKIE_FILE] [--file-input] [--port PORT]
                                 [--model MODEL] [--provider PROVIDER] [--keyword KEYWORD]
                                 [--system-prompt SYSTEM_PROMPT] [--enable-proxies] [--enable-virtual-users]
+                                [--log-level LEVEL] [--log-file FILE] [--log-format FORMAT] [--enable-request-logging]
 ```
 
 Options:
@@ -200,6 +201,10 @@ Options:
 - --enable-proxies           Use one or more proxies to reduce blocking
 - --enable-virtual-users
                              Enable virtual users to divide requests among multiple users
+- --log-level LEVEL          Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- --log-file FILE            Enable logging to file (specify file path)
+- --log-format FORMAT        Custom log format string
+- --enable-request-logging   Enable detailed request/response logging
 
 ---
 
@@ -249,6 +254,26 @@ Change via flags or in the GUI:
 - Use a strong password if you expose the API beyond localhost
 
 **Important**: Always set a password when using the Web GUI to prevent unauthorized access.
+
+### Logging
+
+- **Log levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- **File logging**: Use `--log-file` to enable logging to file
+- **Request logging**: Use `--enable-request-logging` for detailed API request logs
+- **Custom format**: Use `--log-format` for custom log message format
+- **Docker logging**: See `DOCKER_LOGGING.md` for Docker-specific logging configuration
+
+Examples:
+```bash
+# Basic logging
+python3 src/FreeGPT4_Server.py --log-level INFO
+
+# File logging with request details
+python3 src/FreeGPT4_Server.py --log-file ./logs/api.log --enable-request-logging
+
+# Docker with logging
+docker-compose -f docker-compose.dev.yml up -d
+```
 
 ---
 

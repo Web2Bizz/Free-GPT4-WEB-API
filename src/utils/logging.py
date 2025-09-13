@@ -4,11 +4,14 @@ import logging
 import sys
 from pathlib import Path
 from typing import Optional
+from logging.handlers import RotatingFileHandler
 
 def setup_logging(
     level: str = "INFO",
     log_file: Optional[Path] = None,
-    log_format: Optional[str] = None
+    log_format: Optional[str] = None,
+    max_file_size: int = 10 * 1024 * 1024,  # 10 MB
+    backup_count: int = 5
 ) -> logging.Logger:
     """Set up logging configuration.
     
@@ -16,6 +19,8 @@ def setup_logging(
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_file: Optional file path for logging
         log_format: Optional custom log format
+        max_file_size: Maximum size of log file before rotation (bytes)
+        backup_count: Number of backup files to keep
         
     Returns:
         Configured logger instance
@@ -38,10 +43,14 @@ def setup_logging(
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
     
-    # File handler (optional)
+    # File handler (optional) with rotation
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file)
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=max_file_size,
+            backupCount=backup_count
+        )
         file_handler.setLevel(getattr(logging, level.upper()))
         file_formatter = logging.Formatter(log_format)
         file_handler.setFormatter(file_formatter)

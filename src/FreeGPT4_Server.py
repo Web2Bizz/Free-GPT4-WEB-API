@@ -43,6 +43,7 @@ from utils.helpers import (
     parse_proxy_url,
     safe_filename
 )
+from functools import wraps
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -58,6 +59,34 @@ logger.info("FreeGPT4 Web API - Starting server...")
 logger.info("Repo: github.com/aledipa/FreeGPT4-WEB-API")
 logger.info("By: Alessandro Di Pasquale")
 logger.info("GPT4Free Credits: github.com/xtekky/gpt4free")
+
+def log_request(f):
+    """Decorator to log API requests if request logging is enabled."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if hasattr(server_manager, 'args') and server_manager.args.enable_request_logging:
+            # Log request details
+            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+            user_agent = request.headers.get('User-Agent', 'Unknown')
+            
+            logger.info(f"Request: {request.method} {request.path} from {client_ip}")
+            logger.debug(f"User-Agent: {user_agent}")
+            logger.debug(f"Headers: {dict(request.headers)}")
+            
+            # Log request data (be careful with sensitive data)
+            if request.method == "GET":
+                logger.debug(f"Query params: {dict(request.args)}")
+            elif request.is_json:
+                data = request.get_json()
+                # Don't log the full question for privacy
+                if data and server_manager.args.keyword in data:
+                    question_preview = data[server_manager.args.keyword][:100] + "..." if len(data[server_manager.args.keyword]) > 100 else data[server_manager.args.keyword]
+                    logger.debug(f"JSON data: {server_manager.args.keyword}='{question_preview}'")
+            elif request.form:
+                logger.debug(f"Form data: {dict(request.form)}")
+        
+        return f(*args, **kwargs)
+    return decorated_function
 
 class ServerArgumentParser:
     """Parse and manage server arguments."""
@@ -151,6 +180,31 @@ class ServerArgumentParser:
             action='store_true',
             help="Gives the chance to create and manage new users",
         )
+        parser.add_argument(
+            "--log-level",
+            action='store',
+            type=str,
+            choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+            default='INFO',
+            help="Set the logging level (default: INFO)",
+        )
+        parser.add_argument(
+            "--log-file",
+            action='store',
+            type=str,
+            help="Enable logging to file (specify file path)",
+        )
+        parser.add_argument(
+            "--log-format",
+            action='store',
+            type=str,
+            help="Custom log format string",
+        )
+        parser.add_argument(
+            "--enable-request-logging",
+            action='store_true',
+            help="Enable detailed request/response logging",
+        )
         
         return parser
     
@@ -167,11 +221,39 @@ class ServerManager:
         self.fast_api_thread = None
         self._setup_working_directory()
         self._merge_settings_with_args()
+        self._setup_logging()
     
     def _setup_working_directory(self):
         """Set up working directory."""
         script_path = Path(__file__).resolve()
         os.chdir(script_path.parent)
+    
+    def _setup_logging(self):
+        """Set up logging configuration."""
+        try:
+            # Set up logging with arguments
+            log_file = None
+            if self.args.log_file:
+                log_file = Path(self.args.log_file)
+            
+            # Reconfigure logging
+            global logger
+            logger = setup_logging(
+                level=self.args.log_level,
+                log_file=log_file,
+                log_format=self.args.log_format,
+                max_file_size=config.logging.max_file_size,
+                backup_count=config.logging.backup_count
+            )
+            
+            logger.info(f"Logging configured - Level: {self.args.log_level}")
+            if log_file:
+                logger.info(f"Logging to file: {log_file}")
+            if self.args.enable_request_logging:
+                logger.info("Request logging enabled")
+                
+        except Exception as e:
+            logger.error(f"Failed to setup logging: {e}")
     
     def _merge_settings_with_args(self):
         """Merge database settings with command line arguments."""
@@ -226,6 +308,16 @@ class ServerManager:
             # Handle virtual users
             if not hasattr(self.args, 'enable_virtual_users'):
                 self.args.enable_virtual_users = settings.get("virtual_users", False)
+            
+            # Handle logging settings
+            if not hasattr(self.args, 'log_level'):
+                self.args.log_level = settings.get("log_level", config.logging.level)
+            if not hasattr(self.args, 'log_file'):
+                self.args.log_file = settings.get("log_file", config.logging.file)
+            if not hasattr(self.args, 'log_format'):
+                self.args.log_format = settings.get("log_format", config.logging.format)
+            if not hasattr(self.args, 'enable_request_logging'):
+                self.args.enable_request_logging = settings.get("enable_request_logging", config.logging.enable_request_logging)
             
         except Exception as e:
             logger.error(f"Failed to merge settings: {e}")
@@ -322,6 +414,7 @@ def handle_general_exception(e):
     return jsonify({"error": "Internal server error"}), 500
 
 @app.route("/", methods=["GET", "POST"])
+@log_request
 def index():
     """Main API endpoint for chat completion."""
     import asyncio
@@ -518,19 +611,29 @@ def save_settings():
         # Boolean settings
         bool_fields = [
             "file_input", "remove_sources", "message_history", 
-            "proxies", "fast_api", "virtual_users"
+            "proxies", "fast_api", "virtual_users", "enable_request_logging"
         ]
         for field in bool_fields:
             settings_update[field] = request.form.get(field) == "true"
         
         # String settings
-        string_fields = ["port", "model", "keyword", "provider", "system_prompt"]
+        string_fields = ["port", "model", "keyword", "provider", "system_prompt", "log_level", "log_file", "log_format"]
         for field in string_fields:
             value = request.form.get(field, "")
             if field == "port":
                 is_valid, error_msg = validate_port(value)
                 if not is_valid:
                     raise ValidationError(f"Invalid port: {error_msg}")
+            elif field == "log_level":
+                if value and value not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+                    raise ValidationError("Invalid log level. Must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL")
+            elif field == "log_file" and value:
+                # Validate log file path
+                try:
+                    log_path = Path(value)
+                    log_path.parent.mkdir(parents=True, exist_ok=True)
+                except Exception as e:
+                    raise ValidationError(f"Invalid log file path: {e}")
             settings_update[field] = sanitize_input(value)
         
         # Handle password update
@@ -629,6 +732,12 @@ def save_settings():
         # Restart Fast API if needed
         if settings_update.get("fast_api") and not server_manager.fast_api_thread:
             server_manager.start_fast_api()
+        
+        # Reconfigure logging if logging settings changed
+        logging_fields = ["log_level", "log_file", "log_format", "enable_request_logging"]
+        if any(field in settings_update for field in logging_fields):
+            server_manager._setup_logging()
+            logger.info("Logging configuration updated")
         
         logger.info("Settings saved successfully")
         return "Settings saved and applied successfully!"

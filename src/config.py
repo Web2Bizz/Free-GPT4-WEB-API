@@ -47,11 +47,22 @@ class FileConfig:
     upload_folder: str = str(DATA_DIR)
     cookies_file: str = str(DATA_DIR / "cookies.json")
     proxies_file: str = str(DATA_DIR / "proxies.json")
+    log_file: str = str(DATA_DIR / "freegpt4.log")
     allowed_extensions: set = None
     
     def __post_init__(self):
         if self.allowed_extensions is None:
             self.allowed_extensions = {'json'}
+
+@dataclass
+class LoggingConfig:
+    """Logging configuration."""
+    level: str = "INFO"
+    file: Optional[str] = None
+    format: str = "[%(asctime)s] %(levelname)s in %(name)s: %(message)s"
+    max_file_size: int = 10 * 1024 * 1024  # 10 MB
+    backup_count: int = 5
+    enable_request_logging: bool = False
 
 class Config:
     """Main configuration class."""
@@ -62,6 +73,7 @@ class Config:
         self.security = SecurityConfig()
         self.api = APIConfig()
         self.files = FileConfig()
+        self.logging = LoggingConfig()
         
         # Load environment overrides
         self._load_env_overrides()
