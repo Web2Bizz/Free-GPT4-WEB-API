@@ -37,7 +37,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.PROD_HOST }} > ~/.ssh/known_hosts
       - name: building docker images
         run: |
-          ssh ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
           "cd ${{ secrets.PROD_APP_PATH }} && \
            sudo docker compose \
           -f ./docker-compose.prod.yml \
@@ -55,7 +55,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.PROD_HOST }} > ~/.ssh/known_hosts
       - name: prune all
         run: |
-          ssh ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
           "sudo docker system prune -a"
   clean_up:
     needs: clear_old_versions
