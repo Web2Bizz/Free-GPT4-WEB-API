@@ -548,20 +548,6 @@ def get_models():
     return jsonify(ai_service.get_available_models(provider))
 
 
-@app.route("/favicon.ico")
-def favicon():
-    """Serve favicon."""
-    try:
-        from flask import send_from_directory
-        return send_from_directory(
-            str(Path(app.static_folder) / "img"), 
-            "favicon(Nicoladipa).png",
-            mimetype='image/png'
-        )
-    except:
-        # Return empty response if favicon not found
-        return "", 204
-
 def main():
     """Main entry point."""
     try:
