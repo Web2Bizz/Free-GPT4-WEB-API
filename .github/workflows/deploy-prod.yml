@@ -1,0 +1,133 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.PROD_HOST }}
+        username: ${{ secrets.PROD_USERNAME }}
+        port: ${{ secrets.PROD_PORT || '22' }}
+        script: |
+          # Navigate to application directory
+          cd ${{ secrets.PROD_APP_PATH || '/opt/freegpt4' }}
+          
+          echo "🔄 Starting deployment process..."
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Actor: ${{ github.actor }}"
+          
+          # Create backup of current deployment
+          if [ -d "backup" ]; then
+            rm -rf backup.old
+            mv backup backup.old
+          fi
+          if [ -d "current" ]; then
+            cp -r current backup
+          fi
+          
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose.prod.yml down || true
+          
+          # Pull latest code from repository
+          echo "📥 Pulling latest code from repository..."
+          git pull origin ${{ github.ref_name }}
+          
+          # Clean up old Docker images
+          echo "🧹 Cleaning up old Docker images..."
+          docker image prune -f
+          docker system prune -f --volumes
+          
+          # Build new Docker image
+          echo "🔨 Building new Docker image..."
+          docker build -t freegpt4-api:latest .
+          
+          # Start new containers
+          echo "🚀 Starting new containers..."
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          # Wait for health check
+          echo "⏳ Waiting for application to start..."
+          sleep 30
+          
+          # Check if container is healthy
+          if docker ps | grep -q "freegpt4.*healthy"; then
+            echo "✅ Application deployed successfully and is healthy"
+          else
+            echo "❌ Application health check failed"
+            docker-compose -f docker-compose.prod.yml logs
+            exit 1
+          fi
+          
+    - name: Health Check
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.PROD_HOST }}
+        username: ${{ secrets.PROD_USERNAME }}
+        port: ${{ secrets.PROD_PORT || '22' }}
+        script: |
+          # Test API endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:15432/models || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ API is responding correctly"
+          else
+            echo "❌ API health check failed with status: $response"
+            docker-compose -f docker-compose.prod.yml logs
+            exit 1
+          fi
+          
+    - name: Notify deployment status
+      if: always()
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.PROD_HOST }}
+        username: ${{ secrets.PROD_USERNAME }}
+        port: ${{ secrets.PROD_PORT || '22' }}
+        script: |
+          echo "Deployment ${{ job.status }} at $(date)"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Actor: ${{ github.actor }}"
+          
+    - name: Rollback on failure
+      if: failure()
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.PROD_HOST }}
+        username: ${{ secrets.PROD_USERNAME }}
+        port: ${{ secrets.PROD_PORT || '22' }}
+        script: |
+          echo "🔄 Rolling back to previous version..."
+          if [ -d "backup" ]; then
+            docker-compose -f docker-compose.prod.yml down || true
+            cp -r backup current
+            docker-compose -f docker-compose.prod.yml up -d
+            echo "✅ Rollback completed"
+          else
+            echo "❌ No backup found for rollback"
+          fi

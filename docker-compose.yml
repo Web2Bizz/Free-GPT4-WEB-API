@@ -7,9 +7,13 @@ services:
       - "15432:5500"
     volumes:
       - "./src/data:/app/src/data:rw"
+      - "./logs:/app/logs:rw"
     networks:
       - "app_net"
-    command: --remove-sources --provider You --cookie-file /app/src/data/cookies.json
+    environment:
+      - LOG_LEVEL=INFO
+      - LOG_FILE=/app/logs/freegpt4.log
+    command: --remove-sources --provider You --cookie-file /app/src/data/cookies.json --log-level INFO --log-file /app/logs/freegpt4.log --enable-request-logging
 
 networks:
   app_net:
