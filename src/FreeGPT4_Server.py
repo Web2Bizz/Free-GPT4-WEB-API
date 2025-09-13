@@ -336,14 +336,23 @@ def index():
             if request.method == "GET":
                 question = request.args.get(server_manager.args.keyword)
             else:
-                # Handle file upload
-                if 'file' in request.files:
+                # Handle POST request - check for JSON body first, then file upload
+                if request.is_json:
+                    # Handle JSON body
+                    data = request.get_json()
+                    if data and server_manager.args.keyword in data:
+                        question = data[server_manager.args.keyword]
+                elif 'file' in request.files:
+                    # Handle file upload
                     file = request.files['file']
                     is_valid, error_msg = validate_file_upload(file, config.files.allowed_extensions)
                     if not is_valid:
                         raise FileUploadError(error_msg)
                     
                     question = file.read().decode('utf-8')
+                else:
+                    # Handle form data
+                    question = request.form.get(server_manager.args.keyword)
             
             if not question:
                 return "<p id='response'>Please enter a question</p>"
@@ -352,7 +361,17 @@ def index():
             question = sanitize_input(question, 10000)  # 10KB limit
             
             # Verify token access
-            token = request.args.get("token")
+            token = None
+            if request.method == "GET":
+                token = request.args.get("token")
+            else:
+                # For POST requests, get token from body
+                if request.is_json:
+                    data = request.get_json()
+                    token = data.get("token") if data else None
+                else:
+                    token = request.form.get("token")
+            
             username = auth_service.verify_token_access(
                 token, 
                 server_manager.args.private_mode
