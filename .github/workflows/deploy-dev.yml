@@ -142,7 +142,7 @@ jobs:
           git config --local user.name "${{ secrets.GIT_USERNAME }}"
 
           # Create and push tag
-          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION - Auto-generated from dev merge"
+          git tag "$NEW_VERSION"
           git push --tags
           
           echo "Successfully created and pushed tag: $NEW_VERSION"
