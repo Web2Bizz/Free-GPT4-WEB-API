@@ -81,6 +81,7 @@ jobs:
       - name: Create Pull Request
         run: |
           echo "Dev tests passed! Creating Pull Request..."
+          echo "Using token: ${{ secrets.PAT_TOKEN != '' && 'PAT_TOKEN' || 'GITHUB_TOKEN' }}"
           git config --local user.email "${{ secrets.GIT_EMAIL }}"
           git config --local user.name "${{ secrets.GIT_USERNAME }}"
           
