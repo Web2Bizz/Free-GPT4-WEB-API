@@ -1,5 +1,6 @@
 """Database models and operations for FreeGPT4 Web API."""
 
+import os
 import sqlite3
 import json
 from contextlib import contextmanager
@@ -63,7 +64,16 @@ class DatabaseManager:
     
     def _ensure_db_directory(self):
         """Ensure database directory exists."""
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        db_dir = Path(self.db_path).parent
+        db_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure directory is writable
+        if not os.access(db_dir, os.W_OK):
+            logger.warning(f"Database directory {db_dir} is not writable, attempting to fix permissions")
+            try:
+                os.chmod(db_dir, 0o755)
+            except OSError as e:
+                logger.error(f"Failed to set permissions for {db_dir}: {e}")
+                raise DatabaseError(f"Cannot write to database directory: {db_dir}")
     
     @contextmanager
     def get_connection(self):

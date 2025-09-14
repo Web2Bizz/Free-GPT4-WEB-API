@@ -17,7 +17,7 @@ DATA_DIR.mkdir(exist_ok=True)
 @dataclass
 class DatabaseConfig:
     """Database configuration."""
-    settings_file: str = str(DATA_DIR / "settings.db")
+    settings_file: str = os.getenv("DATABASE_PATH", str(DATA_DIR / "settings.db"))
     
 @dataclass
 class ServerConfig:

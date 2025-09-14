@@ -37,6 +37,7 @@ services:
       - COOKIE_FILE=${COOKIE_FILE:-/app/data/cookies.json}
       - PROVIDER=${PROVIDER:-You}
       - REMOVE_SOURCES=${REMOVE_SOURCES:-true}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/settings.db}
     command: [
       "python", "-m", "freegpt4.FreeGPT4_Server",
       "--log-level", "${LOG_LEVEL:-INFO}",

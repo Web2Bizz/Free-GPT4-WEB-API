@@ -25,6 +25,12 @@ export REMOVE_SOURCES=${REMOVE_SOURCES:-true}
 echo -e "${BLUE}Creating necessary directories...${NC}"
 mkdir -p logs/nginx
 mkdir -p llm-api-service/data
+mkdir -p logs
+
+# Set proper permissions for data directories
+echo -e "${BLUE}Setting permissions for data directories...${NC}"
+chmod -R 755 llm-api-service/data
+chmod -R 755 logs
 
 # Create networks if they don't exist
 echo -e "${BLUE}Creating Docker networks...${NC}"
