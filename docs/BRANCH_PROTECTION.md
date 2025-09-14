@@ -54,9 +54,8 @@ Active
 - **Require review from code owners:** ❌ отключено
 
 #### **✅ Require status checks:**
-- **Включено** ✅
-- **Require branches to be up to date:** ✅ включено
-- **Status checks:** `Test and Deploy to Dev Environment`
+- **Отключено** ❌ (тестирование происходит в dev ветке)
+- **Причина:** Все изменения уже протестированы в dev перед merge
 
 #### **✅ Require linear history:**
 - **Включено** ✅
@@ -100,9 +99,8 @@ Rules:
 ├── Require pull request ✅
 │   ├── Required reviewers: 0
 │   └── Dismiss stale reviews ✅
-├── Require status checks ✅
-│   ├── Require up to date ✅
-│   └── Status check: "Test and Deploy to Dev Environment"
+├── Require status checks ❌
+│   └── Тестирование в dev ветке
 ├── Require linear history ✅
 └── Restrict pushes that create files ✅
 
@@ -141,7 +139,7 @@ Workflow автоматически выполнит rebase dev на main, а з
 В `deploy-dev.yml`:
 ```yaml
 test_dev_environment:
-  name: Test and Deploy to Dev Environment  # ← Должно совпадать!
+  name: Test Development Environment  # ← Должно совпадать!
 ```
 
 ### **2. Проверьте, что workflow запускается:**
@@ -157,8 +155,8 @@ test_dev_environment:
 
 ### **1. Неправильное название status check:**
 ```
-❌ Неправильно: "Deploy to Development"
-✅ Правильно: "Test and Deploy to Dev Environment"
+❌ Неправильно: "Test and Deploy to Dev Environment"
+✅ Правильно: "Test Development Environment"
 ```
 
 ### **2. Bypass list пустой:**

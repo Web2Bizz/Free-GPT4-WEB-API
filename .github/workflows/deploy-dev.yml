@@ -78,9 +78,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Merge to main
+      - name: Create Pull Request
         run: |
-          echo "Dev tests passed! Merging to main..."
+          echo "Dev tests passed! Creating Pull Request..."
           git config --local user.email "${{ secrets.GIT_EMAIL }}"
           git config --local user.name "${{ secrets.GIT_USERNAME }}"
           
@@ -105,9 +105,9 @@ jobs:
             git merge dev --ff-only
           fi
           
-          # Push to main
+          # Push to main (this will trigger the status check)
           git push origin main
-          echo "Successfully merged dev to main!"
+          echo "Successfully pushed to main! Status check will run automatically."
 
   # Job 3: Create Version Tag (depends on successful merge)
   create_version_tag:
