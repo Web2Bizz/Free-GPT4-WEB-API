@@ -102,7 +102,9 @@ Rules:
 └── Restrict pushes that create files ✅
 
 Bypass list:
-└── Your username (Admin)
+├── Your username (Admin)
+├── github-actions[bot] (GitHub Actions)
+└── GITHUB_TOKEN (Workflow token)
 ```
 
 ## **Важно: Fast-Forward Merge**
