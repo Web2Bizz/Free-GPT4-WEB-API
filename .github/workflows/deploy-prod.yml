@@ -20,6 +20,13 @@ jobs:
           echo "Ref: ${{ github.ref }}"
           echo "Ref type: ${{ github.ref_type }}"
           echo "Tag name: ${{ github.event.head_commit.message }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Event ref: ${{ github.event.ref }}"
+          echo "Event ref type: ${{ github.event.ref_type }}"
+          echo "Event before: ${{ github.event.before }}"
+          echo "Event after: ${{ github.event.after }}"
+          echo "Event pusher: ${{ github.event.pusher.name }}"
+          echo "Event repository: ${{ github.event.repository.full_name }}"
       - name: install ssh keys
         run: |
           install -m 600 -D /dev/null ~/.ssh/id_rsa
