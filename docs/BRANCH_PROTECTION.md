@@ -120,10 +120,20 @@ Bypass list:
 - ⚠️ **Требует синхронизации** - dev должен быть впереди main
 
 ### **Если fast-forward невозможен:**
-Workflow завершится с ошибкой, если dev и main разошлись. В этом случае нужно:
-1. Сделать `git pull origin main` в dev ветке
-2. Запушить обновленную dev ветку
-3. Повторить workflow
+Workflow автоматически выполнит rebase dev на main, а затем fast-forward merge. Это означает:
+
+1. **Автоматический rebase** - dev перебазируется на main
+2. **Fast-forward merge** - main обновляется без merge commits
+3. **Линейная история** - соблюдается правило "Require linear history"
+4. **Никаких ручных действий** - все происходит автоматически
+
+### **Алгоритм workflow:**
+```
+1. Проверить, можно ли fast-forward merge
+2. Если ДА → выполнить fast-forward merge
+3. Если НЕТ → rebase dev на main → fast-forward merge
+4. Запушить обновленный main
+```
 
 ## **Проверка настроек:**
 

@@ -91,8 +91,19 @@ jobs:
           git checkout main
           git pull origin main
           
-          # Merge dev into main (fast-forward to avoid merge commits)
-          git merge dev --ff-only
+          # Check if fast-forward is possible
+          if git merge-base --is-ancestor main dev; then
+            echo "Fast-forward merge possible"
+            git merge dev --ff-only
+          else
+            echo "Branches diverged, rebasing dev onto main first"
+            # Switch to dev and rebase onto main
+            git checkout dev
+            git rebase main
+            # Switch back to main and fast-forward
+            git checkout main
+            git merge dev --ff-only
+          fi
           
           # Push to main
           git push origin main
