@@ -58,9 +58,9 @@ jobs:
           docker compose -f docker-compose.dev.yml down -v
           docker system prune -f
 
-  # Job 2: Merge to Main (depends on successful testing)
+  # Job 2: Merge to Main via GitHub API (depends on successful testing)
   merge_to_main:
-    name: Merge Dev to Main
+    name: Merge Dev to Main via API
     runs-on: ubuntu-latest
     needs: test_dev_environment
     if: github.event_name == 'push'
@@ -78,43 +78,66 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
       
-      - name: Create Pull Request
+      - name: Merge via GitHub API
         run: |
-          echo "Dev tests passed! Creating Pull Request..."
+          echo "Dev tests passed! Merging via GitHub API..."
           echo "Using token: ${{ secrets.PAT_TOKEN != '' && 'PAT_TOKEN' || 'GITHUB_TOKEN' }}"
-          git config --local user.email "${{ secrets.GIT_EMAIL }}"
-          git config --local user.name "${{ secrets.GIT_USERNAME }}"
-          git config --local credential.helper store
-          echo "https://${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
           
-          # Fetch all branches
-          git fetch origin
+          # Set up authentication
+          TOKEN="${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}"
+          REPO="${{ github.repository }}"
           
-          # Checkout main branch
-          git checkout main
-          git pull origin main
+          # Get current commit SHA from dev branch
+          DEV_SHA=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO/git/refs/heads/dev" | \
+            jq -r '.object.sha')
+          
+          echo "Dev branch SHA: $DEV_SHA"
+          
+          # Get main branch SHA
+          MAIN_SHA=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO/git/refs/heads/main" | \
+            jq -r '.object.sha')
+          
+          echo "Main branch SHA: $MAIN_SHA"
           
           # Check if fast-forward is possible
-          if git merge-base --is-ancestor main dev; then
+          MERGE_BASE=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO/compare/$MAIN_SHA...$DEV_SHA" | \
+            jq -r '.merge_base_commit.sha')
+          
+          echo "Merge base SHA: $MERGE_BASE"
+          
+          if [ "$MERGE_BASE" = "$MAIN_SHA" ]; then
             echo "Fast-forward merge possible"
-            git merge dev --ff-only
+            # Fast-forward merge via API
+            curl -s -X POST \
+              -H "Authorization: token $TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/$REPO/git/refs/heads/main" \
+              -d "{
+                \"sha\": \"$DEV_SHA\",
+                \"force\": false
+              }" | jq '.'
           else
-            echo "Branches diverged, rebasing dev onto main first"
-            # Switch to dev and rebase onto main
-            git checkout dev
-            git rebase main
-            # Switch back to main and fast-forward
-            git checkout main
-            git merge dev --ff-only
+            echo "Branches diverged, creating merge commit"
+            # Create merge commit via API
+            curl -s -X POST \
+              -H "Authorization: token $TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/$REPO/merges" \
+              -d "{
+                \"base\": \"main\",
+                \"head\": \"dev\",
+                \"commit_message\": \"Merge dev into main via GitHub Actions\"
+              }" | jq '.'
           fi
           
-          # Force push to main using HTTPS
-          git push origin main
-          echo "Successfully pushed to main! Force push completed."
+          echo "Successfully merged dev into main via GitHub API!"
 
-  # Job 3: Create Version Tag (depends on successful merge)
+  # Job 3: Create Version Tag via GitHub API (depends on successful merge)
   create_version_tag:
-    name: Create Version Tag
+    name: Create Version Tag via API
     runs-on: ubuntu-latest
     needs: merge_to_main
     if: github.event_name == 'push'
@@ -131,14 +154,20 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
       
-      - name: Create version tag
+      - name: Create version tag via GitHub API
         run: |
-          echo "Creating version tag..."
+          echo "Creating version tag via GitHub API..."
           echo "Using token: ${{ secrets.PAT_TOKEN != '' && 'PAT_TOKEN' || 'GITHUB_TOKEN' }}"
           
-          # Get the latest tag
-          git fetch --tags
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Set up authentication
+          TOKEN="${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}"
+          REPO="${{ github.repository }}"
+          
+          # Get the latest tag via GitHub API
+          LATEST_TAG=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO/tags" | \
+            jq -r '.[0].name // "v0.0.0"')
+          
           echo "Latest tag: $LATEST_TAG"
           
           # Extract version number and increment patch version
@@ -154,26 +183,29 @@ jobs:
           
           echo "Creating new tag: $NEW_VERSION"
           
-          git config --local user.email "${{ secrets.GIT_EMAIL }}"
-          git config --local user.name "${{ secrets.GIT_USERNAME }}"
-          git config --local credential.helper store
-          echo "https://${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
-
-          # Create and push tag
-          git tag "$NEW_VERSION"
+          # Get main branch SHA
+          MAIN_SHA=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO/git/refs/heads/main" | \
+            jq -r '.object.sha')
           
-          # Debug: Show current tags before push
-          echo "Current tags before push:"
-          git tag --sort=-version:refname | head -5
+          echo "Main branch SHA: $MAIN_SHA"
           
-          # Push the tag
-          git push origin "$NEW_VERSION"
+          # Create tag via GitHub API
+          curl -s -X POST \
+            -H "Authorization: token $TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/git/refs" \
+            -d "{
+              \"ref\": \"refs/tags/$NEW_VERSION\",
+              \"sha\": \"$MAIN_SHA\"
+            }" | jq '.'
           
-          # Debug: Verify tag was pushed
-          echo "Verifying tag was pushed..."
-          git ls-remote --tags origin | grep "$NEW_VERSION"
+          # Debug: Verify tag was created
+          echo "Verifying tag was created..."
+          curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO/git/refs/tags/$NEW_VERSION" | jq '.'
           
-          echo "Successfully created and pushed tag: $NEW_VERSION"
+          echo "Successfully created tag: $NEW_VERSION"
           echo "This should trigger the production deployment workflow"
 
   # Job 4: Notify on Failure
