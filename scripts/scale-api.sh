@@ -57,10 +57,10 @@ show_usage() {
     echo "  $0 status                     # Show current status"
 }
 
-# Function to check if docker-compose is available
+# Function to check if docker compose is available
 check_docker_compose() {
-    if ! command -v docker-compose &> /dev/null; then
-        print_error "docker-compose is not installed or not in PATH"
+    if ! command -v docker compose &> /dev/null; then
+        print_error "docker compose is not installed or not in PATH"
         exit 1
     fi
 }
@@ -81,13 +81,13 @@ scale_api() {
     export API_MEMORY_RESERVATION=$memory_reservation
     
     # Scale the service
-    docker-compose up -d --scale api=$replicas
+    docker compose up -d --scale api=$replicas
     
     print_success "API scaled to $replicas replicas"
     
     # Show status
     print_status "Current status:"
-    docker-compose ps
+    docker compose ps
 }
 
 # Function to start services
@@ -103,36 +103,36 @@ start_services() {
     export API_MEMORY_RESERVATION=$memory_reservation
     
     # Start services
-    docker-compose up -d
+    docker compose up -d
     
     print_success "Services started"
     
     # Show status
     print_status "Current status:"
-    docker-compose ps
+    docker compose ps
 }
 
 # Function to stop services
 stop_services() {
     print_status "Stopping FreeGPT4 API cluster..."
-    docker-compose down
+    docker compose down
     print_success "Services stopped"
 }
 
 # Function to restart services
 restart_services() {
     print_status "Restarting FreeGPT4 API cluster..."
-    docker-compose restart
+    docker compose restart
     print_success "Services restarted"
 }
 
 # Function to show status
 show_status() {
     print_status "FreeGPT4 API Cluster Status:"
-    docker-compose ps
+    docker compose ps
     echo ""
     print_status "Service details:"
-    docker-compose config --services | while read service; do
+    docker compose config --services | while read service; do
         echo "  - $service"
     done
 }
@@ -142,10 +142,10 @@ show_logs() {
     local service=$1
     if [ -n "$service" ]; then
         print_status "Showing logs for $service:"
-        docker-compose logs -f "$service"
+        docker compose logs -f "$service"
     else
         print_status "Showing logs for all services:"
-        docker-compose logs -f
+        docker compose logs -f
     fi
 }
 
@@ -169,7 +169,7 @@ check_health() {
     
     # Show container health
     print_status "Container health status:"
-    docker-compose ps --format "table {{.Name}}\t{{.Status}}"
+    docker compose ps --format "table {{.Name}}\t{{.Status}}"
 }
 
 # Main script logic

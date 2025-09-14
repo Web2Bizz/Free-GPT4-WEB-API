@@ -49,7 +49,7 @@ The service is designed to run as part of a cluster with load balancing:
 
 ```bash
 # From the project root
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Standalone
@@ -89,7 +89,7 @@ mypy src/
 The service can be configured through:
 
 1. **Command line arguments** - See `python FreeGPT4_Server.py --help`
-2. **Environment variables** - Set in docker-compose.yml
+2. **Environment variables** - Set in docker compose.yml
 3. **Web GUI** - Access via `/settings` endpoint
 
 ## Data Directory

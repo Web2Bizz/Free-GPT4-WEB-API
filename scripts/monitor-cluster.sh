@@ -30,7 +30,7 @@ check_service() {
 # Function to check Docker container status
 check_container() {
     local container=$1
-    local status=$(docker-compose ps -q $container 2>/dev/null)
+    local status=$(docker compose ps -q $container 2>/dev/null)
     
     if [[ -n "$status" ]]; then
         local container_status=$(docker inspect --format='{{.State.Status}}' $status 2>/dev/null)
@@ -108,13 +108,13 @@ echo ""
 
 # Show recent logs
 echo -e "${BLUE}Recent logs (last 10 lines):${NC}"
-docker-compose logs --tail=10
+docker compose logs --tail=10
 
 echo ""
 
 # Show service status
 echo -e "${BLUE}Service status:${NC}"
-docker-compose ps
+docker compose ps
 
 echo ""
 
@@ -126,4 +126,4 @@ echo ""
 
 # Show uptime
 echo -e "${BLUE}Uptime:${NC}"
-docker-compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"

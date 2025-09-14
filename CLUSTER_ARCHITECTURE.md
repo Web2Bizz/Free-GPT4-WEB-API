@@ -232,10 +232,10 @@ networks:
 ### Проверка статуса
 ```bash
 # Статус сервисов
-docker-compose ps
+docker compose ps
 
 # Логи
-docker-compose logs -f
+docker compose logs -f
 
 # Мониторинг
 ./scripts/monitor-cluster.sh
@@ -261,15 +261,15 @@ docker exec -it nginx_container ping api
 ```bash
 # Разработка - 1 реплика
 export API_REPLICAS=1
-docker-compose up -d
+docker compose up -d
 
 # Продакшн - 4 реплики
 export API_REPLICAS=4
-docker-compose up -d
+docker compose up -d
 
 # Высокая нагрузка - 8 реплик
 export API_REPLICAS=8
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Управление ресурсами
@@ -279,19 +279,19 @@ docker-compose up -d
 # Установка лимитов памяти
 export API_MEMORY_LIMIT=1G
 export API_MEMORY_RESERVATION=512M
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Мониторинг масштабирования
 ```bash
 # Проверка количества запущенных реплик
-docker-compose ps api
+docker compose ps api
 
 # Мониторинг использования ресурсов
 docker stats
 
 # Логи всех реплик
-docker-compose logs -f api
+docker compose logs -f api
 ```
 
 ### Автоматическое масштабирование

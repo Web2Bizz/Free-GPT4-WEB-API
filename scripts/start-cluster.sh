@@ -33,7 +33,7 @@ docker network create internal 2>/dev/null || echo "Internal network already exi
 
 # Start the cluster
 echo -e "${BLUE}Starting FreeGPT4 API cluster...${NC}"
-docker-compose up -d
+docker compose up -d
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
@@ -41,11 +41,11 @@ sleep 15
 
 # Check service status
 echo -e "${BLUE}Checking service status...${NC}"
-docker-compose ps
+docker compose ps
 
 # Show logs
 echo -e "${BLUE}Recent logs:${NC}"
-docker-compose logs --tail=20
+docker compose logs --tail=20
 
 echo -e "${GREEN}Cluster started successfully!${NC}"
 echo ""
@@ -63,7 +63,7 @@ echo "- external: nginx"
 echo "- internal: nginx, api replicas (isolated from external access)"
 echo ""
 echo -e "${YELLOW}To view logs:${NC}"
-echo "docker-compose logs -f"
+echo "docker compose logs -f"
 echo ""
 echo -e "${YELLOW}To stop:${NC}"
-echo "docker-compose down"
+echo "docker compose down"

@@ -46,17 +46,17 @@ check_docker() {
 
 # Function to check if service is running
 check_service() {
-    if ! docker-compose ps $SERVICE_NAME | grep -q "Up"; then
+    if ! docker compose ps $SERVICE_NAME | grep -q "Up"; then
         echo -e "${YELLOW}Warning: Service '$SERVICE_NAME' is not running${NC}"
         echo "Starting service..."
-        docker-compose up -d $SERVICE_NAME
+        docker compose up -d $SERVICE_NAME
         sleep 5
     fi
 }
 
 # Function to show logs
 show_logs() {
-    local cmd="docker-compose logs"
+    local cmd="docker compose logs"
     
     if [ "$FOLLOW" = true ]; then
         cmd="$cmd -f"

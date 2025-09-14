@@ -83,7 +83,7 @@ docker run \
 docker run -p YOUR_PORT:5500 d0ckmg/free-gpt4-web-api:latest
 ```
 
-- docker-compose.yml (cluster with load balancing and scalable replicas):
+- docker compose.yml (cluster with load balancing and scalable replicas):
   ```yaml
   version: "3.9"
   services:
@@ -325,7 +325,7 @@ python3 src/FreeGPT4_Server.py --log-level INFO
 python3 src/FreeGPT4_Server.py --log-file ./logs/api.log --enable-request-logging
 
 # Docker with logging
-  docker-compose -f docker-compose.dev.yml up -d
+  docker compose -f docker compose.dev.yml up -d
   ```
 
 ---
@@ -376,7 +376,7 @@ export API_MEMORY_LIMIT=1G
 export API_MEMORY_RESERVATION=512M
 
 # Start with custom scaling
-docker-compose up -d
+docker compose up -d
 ```
 
 **Scaling Examples:**
