@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create user
-RUN groupadd -r freegpt && useradd -r -g freegpt freegpt
+# RUN groupadd -r freegpt && useradd -r -g freegpt freegpt
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
@@ -32,10 +32,11 @@ RUN pip install -e .
 # Create necessary directories
 RUN mkdir -p /app/logs \
     && mkdir -p /app/data \
-    && chown -R freegpt:freegpt /app
+    && chmod -R 755 /app/data \
+    && chmod -R 755 /app/logs
 
-# Switch to non-root user
-USER freegpt
+# Keep running as root for now to avoid permission issues with mounted volumes
+# USER freegpt
 
 # Set Python path
 ENV PYTHONPATH="/app/src"

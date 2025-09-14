@@ -66,13 +66,16 @@ class DatabaseManager:
         """Ensure database directory exists."""
         db_dir = Path(self.db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
-        # Ensure directory is writable
+        # Check if directory is writable
         if not os.access(db_dir, os.W_OK):
-            logger.warning(f"Database directory {db_dir} is not writable, attempting to fix permissions")
-            try:
-                os.chmod(db_dir, 0o755)
-            except OSError as e:
-                logger.error(f"Failed to set permissions for {db_dir}: {e}")
+            logger.warning(f"Database directory {db_dir} is not writable, trying alternative location")
+            # Try to use /tmp directory as fallback
+            fallback_dir = Path("/tmp/freegpt4_data")
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            if os.access(fallback_dir, os.W_OK):
+                self.db_path = str(fallback_dir / "settings.db")
+                logger.info(f"Using fallback database location: {self.db_path}")
+            else:
                 raise DatabaseError(f"Cannot write to database directory: {db_dir}")
     
     @contextmanager

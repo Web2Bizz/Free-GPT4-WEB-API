@@ -59,8 +59,13 @@ jobs:
           ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
           "cd ${{ secrets.PROD_APP_PATH }} && \
           docker compose ps && \
+          echo 'Checking data directory permissions:' && \
           ls -la llm-api-service/data/ && \
-          ls -la logs/"
+          echo 'Checking logs directory permissions:' && \
+          ls -la logs/ && \
+          echo 'Testing database write access:' && \
+          touch llm-api-service/data/test_write && rm -f llm-api-service/data/test_write && \
+          echo 'Database write test successful'"
 
   clear_old_versions:
     needs: start_cluster

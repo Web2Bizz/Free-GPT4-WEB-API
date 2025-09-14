@@ -29,8 +29,13 @@ mkdir -p logs
 
 # Set proper permissions for data directories
 echo -e "${BLUE}Setting permissions for data directories...${NC}"
-chmod -R 755 llm-api-service/data
-chmod -R 755 logs
+chmod -R 777 llm-api-service/data
+chmod -R 777 logs
+
+# Ensure directories are owned by current user
+echo -e "${BLUE}Setting ownership for data directories...${NC}"
+chown -R $(id -u):$(id -g) llm-api-service/data
+chown -R $(id -u):$(id -g) logs
 
 # Create networks if they don't exist
 echo -e "${BLUE}Creating Docker networks...${NC}"
