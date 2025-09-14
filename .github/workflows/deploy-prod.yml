@@ -37,13 +37,26 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
           "cd ${{ secrets.PROD_APP_PATH }} && \
-          docker compose \
-          -f ./docker-compose.prod.yml \
-          -p prod \
-          up -d --build"
+          docker-compose build --no-cache"
+
+  start_cluster:
+    needs: build_containers
+    runs-on: ubuntu-latest
+    steps:
+      - name: install ssh keys
+        run: |
+          install -m 600 -D /dev/null ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.PROD_HOST }} > ~/.ssh/known_hosts
+      - name: start cluster
+        run: |
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
+          "cd ${{ secrets.PROD_APP_PATH }} && \
+          chmod +x scripts/start-cluster.sh && \
+          ./scripts/start-cluster.sh"
 
   clear_old_versions:
-    needs: build_containers
+    needs: start_cluster
     runs-on: ubuntu-latest
     steps:
       - name: install ssh keys
