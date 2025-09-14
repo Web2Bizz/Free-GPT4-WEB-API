@@ -9,9 +9,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  run_pull:
-    name: run pull
+  deploy_production:
+    name: Deploy to Production
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
 
     steps:
       - name: Debug trigger info
@@ -27,77 +30,59 @@ jobs:
           echo "Event after: ${{ github.event.after }}"
           echo "Event pusher: ${{ github.event.pusher.name }}"
           echo "Event repository: ${{ github.event.repository.full_name }}"
-      - name: install ssh keys
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Git credentials
         run: |
-          install -m 600 -D /dev/null ~/.ssh/id_rsa
-          echo "${{secrets.SSH_PRIVATE_KEY}}" > ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.PROD_HOST }} > ~/.ssh/known_hosts
-      - name: connect and pull
-        run: |
-          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
-          "cd ${{ secrets.PROD_APP_PATH }} && \
-          git checkout main && \
-          git pull --rebase"
-
-  build_containers:
-    needs: run_pull
-    runs-on: ubuntu-latest
-    steps:
-      - name: install ssh keys
-        run: |
-          install -m 600 -D /dev/null ~/.ssh/id_rsa
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.PROD_HOST }} > ~/.ssh/known_hosts
-      - name: building docker images
-        run: |
-          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
-          "cd ${{ secrets.PROD_APP_PATH }} && \
-          docker compose build --parallel --build-arg BUILDKIT_INLINE_CACHE=1"
-
-  start_cluster:
-    needs: build_containers
-    runs-on: ubuntu-latest
-    steps:
-      - name: install ssh keys
+          git config --local user.email "${{ secrets.GIT_EMAIL }}"
+          git config --local user.name "${{ secrets.GIT_USERNAME }}"
+          git config --local credential.helper store
+          echo "https://${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
+      
+      - name: Setup SSH key
         run: |
           install -m 600 -D /dev/null ~/.ssh/id_rsa
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.PROD_HOST }} > ~/.ssh/known_hosts
-      - name: start cluster
+      
+      - name: Deploy to production server
         run: |
-          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
-          "cd ${{ secrets.PROD_APP_PATH }} && \
-          chmod +x scripts/start-cluster.sh && \
-          ./scripts/start-cluster.sh"
-      - name: verify deployment
-        run: |
-          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
-          "cd ${{ secrets.PROD_APP_PATH }} && \
-          docker compose ps && \
-          echo 'Checking data directory permissions:' && \
-          ls -la llm-api-service/data/ && \
-          echo 'Checking logs directory permissions:' && \
-          ls -la logs/ && \
-          echo 'Testing database write access:' && \
-          touch llm-api-service/data/test_write && rm -f llm-api-service/data/test_write && \
-          echo 'Database write test successful'"
-
-  clear_old_versions:
-    needs: start_cluster
-    runs-on: ubuntu-latest
-    steps:
-      - name: install ssh keys
-        run: |
-          install -m 600 -D /dev/null ~/.ssh/id_rsa
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.PROD_HOST }} > ~/.ssh/known_hosts
-      - name: prune all
-        run: |
-          ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
-          "docker system prune -a"
-  clean_up:
-    needs: clear_old_versions
-    runs-on: ubuntu-latest
-    steps:
-      - name: clean up
-        run: rm -rf ~/.ssh
+          # Подключение к серверу и выполнение деплоя
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} << 'EOF'
+            cd ${{ secrets.PROD_APP_PATH }}
+            
+            echo "=== Updating code ==="
+            git checkout main
+            git config --local user.email "${{ secrets.GIT_EMAIL }}"
+            git config --local user.name "${{ secrets.GIT_USERNAME }}"
+            git config --local credential.helper store
+            echo "https://${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
+            git pull origin main
+            
+            echo "=== Building Docker images ==="
+            docker compose build --parallel --build-arg BUILDKIT_INLINE_CACHE=1
+            
+            echo "=== Starting cluster ==="
+            chmod +x scripts/start-cluster.sh
+            ./scripts/start-cluster.sh
+            
+            echo "=== Verifying deployment ==="
+            docker compose ps
+            echo "Checking data directory permissions:"
+            ls -la llm-api-service/data/
+            echo "Checking logs directory permissions:"
+            ls -la logs/
+            echo "Testing database write access:"
+            touch llm-api-service/data/test_write && rm -f llm-api-service/data/test_write
+            echo "Database write test successful"
+            
+            echo "=== Cleaning up old images ==="
+            docker system prune -a -f
+            
+            echo "=== Production deployment completed successfully ==="
+          EOF
