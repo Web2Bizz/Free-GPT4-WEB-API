@@ -15,12 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config --global user.email "${{ secrets.GIT_EMAIL }}"
+          git config --global user.name "${{ secrets.GIT_USERNAME }}"
+      
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: dev
           fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -76,7 +85,7 @@ jobs:
         with:
           ref: dev
           fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
       
       - name: Create Pull Request
         run: |
@@ -106,7 +115,8 @@ jobs:
             git merge dev --ff-only
           fi
           
-          # Force push to main (bypassing branch protection rules)
+          # Force push to main using SSH
+          git remote set-url origin git@github.com:Web2Bizz/Free-GPT4-WEB-API.git
           git push origin main
           echo "Successfully pushed to main! Force push completed."
 
@@ -127,7 +137,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
       
       - name: Create version tag
         run: |
