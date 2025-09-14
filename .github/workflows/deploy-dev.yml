@@ -27,7 +27,8 @@ jobs:
       
       - name: Build dev images
         run: |
-          docker compose -f docker-compose.dev.yml build --no-cache
+          # Build images in parallel with cache
+          docker compose -f docker-compose.dev.yml build --parallel --build-arg BUILDKIT_INLINE_CACHE=1
       
       - name: Start dev environment
         run: |
