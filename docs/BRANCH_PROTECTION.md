@@ -60,7 +60,7 @@ Active
 
 #### **✅ Require linear history:**
 - **Включено** ✅
-- **Описание:** Запрещает merge commits
+- **Описание:** Запрещает merge commits (используется fast-forward merge)
 
 #### **✅ Restrict pushes that create files:**
 - **Включено** ✅
@@ -109,6 +109,21 @@ Rules:
 Bypass list:
 └── Your username (Admin)
 ```
+
+## **Важно: Fast-Forward Merge**
+
+При включенном правиле **"Require linear history"** workflow использует **fast-forward merge** вместо обычного merge commit. Это означает:
+
+- ✅ **Нет merge commits** - история остается линейной
+- ✅ **Все коммиты из dev** переносятся в main
+- ✅ **Соблюдаются правила** Branch Protection
+- ⚠️ **Требует синхронизации** - dev должен быть впереди main
+
+### **Если fast-forward невозможен:**
+Workflow завершится с ошибкой, если dev и main разошлись. В этом случае нужно:
+1. Сделать `git pull origin main` в dev ветке
+2. Запушить обновленную dev ветку
+3. Повторить workflow
 
 ## **Проверка настроек:**
 
