@@ -191,3 +191,47 @@ git push origin main
 # Stop production
 docker compose down
 ```
+
+## Version Management
+
+### Automatic Versioning
+
+The project uses **automatic semantic versioning**:
+
+- **Patch versions** (v1.0.1, v1.0.2) - Auto-created on successful dev merges
+- **Minor versions** (v1.1.0) - Manual creation for new features
+- **Major versions** (v2.0.0) - Manual creation for breaking changes
+
+### Version Workflow
+
+1. **Dev tests pass** → Auto-merge to main
+2. **Auto-create patch tag** → v1.0.1, v1.0.2, etc.
+3. **Production deployment** → Triggered by new tag
+
+### Manual Version Management
+
+```bash
+# Check current version
+./scripts/version-manager.sh current
+
+# See what next version would be
+./scripts/version-manager.sh next-patch
+./scripts/version-manager.sh next-minor
+./scripts/version-manager.sh next-major
+
+# Create manual versions
+./scripts/version-manager.sh create-patch   # v1.0.1
+./scripts/version-manager.sh create-minor   # v1.1.0
+./scripts/version-manager.sh create-major   # v2.0.0
+
+# List recent tags
+./scripts/version-manager.sh list
+```
+
+### Version Examples
+
+- **v1.0.0** - Initial release
+- **v1.0.1** - Bug fix (auto-created)
+- **v1.0.2** - Another bug fix (auto-created)
+- **v1.1.0** - New feature (manual)
+- **v2.0.0** - Breaking change (manual)
