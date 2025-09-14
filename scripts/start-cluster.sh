@@ -24,8 +24,6 @@ export REMOVE_SOURCES=${REMOVE_SOURCES:-true}
 # Create necessary directories
 echo -e "${BLUE}Creating necessary directories...${NC}"
 mkdir -p logs/nginx
-mkdir -p certbot/conf
-mkdir -p certbot/www
 mkdir -p llm-api-service/data
 
 # Create networks if they don't exist
@@ -52,18 +50,17 @@ docker-compose logs --tail=20
 echo -e "${GREEN}Cluster started successfully!${NC}"
 echo ""
 echo -e "${YELLOW}Services:${NC}"
-echo "- nginx (reverse proxy): http://localhost:80, https://localhost:443"
-echo "- api1 (replica 1): internal network only"
-echo "- api2 (replica 2): internal network only"
+echo "- nginx (reverse proxy): http://localhost:15432"
+echo "- api (scalable replicas): internal network only"
 echo ""
 echo -e "${YELLOW}Load balancing:${NC}"
-echo "- Round-robin distribution between api1 and api2"
+echo "- Round-robin distribution between API replicas"
 echo "- Health checks enabled"
 echo "- Rate limiting configured"
 echo ""
 echo -e "${YELLOW}Networks:${NC}"
-echo "- external: nginx, certbot"
-echo "- internal: nginx, api1, api2 (isolated from external access)"
+echo "- external: nginx"
+echo "- internal: nginx, api replicas (isolated from external access)"
 echo ""
 echo -e "${YELLOW}To view logs:${NC}"
 echo "docker-compose logs -f"

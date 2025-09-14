@@ -3,40 +3,34 @@
 ## Обзор
 
 Новая архитектура включает в себя:
-- **2 реплики Python API** в изолированной внутренней сети
+- **Масштабируемые реплики Python API** (настраивается через `API_REPLICAS`, по умолчанию: 2)
 - **Nginx reverse proxy** в двух сетях (external и internal)
 - **Load balancing** между репликами API
-- **SSL/TLS поддержка** с Let's Encrypt
+- **Управление ресурсами** с лимитами памяти
 - **Изоляция безопасности** - API недоступны извне
 
 ## Архитектура
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    External Network                        │
+│                    External Network                         │
 │  ┌─────────────────┐    ┌─────────────────────────────────┐ │
 │  │   Internet      │    │        Nginx                    │ │
 │  │   Users         │◄───┤   (Reverse Proxy)               │ │
-│  │                 │    │   Ports: 80, 443                │ │
+│  │                 │    │   Port: 15432                   │ │
 │  └─────────────────┘    └─────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Internal Network                        │
+│                    Internal Network                         │
 │  ┌─────────────────┐    ┌─────────────────────────────────┐ │
-│  │   LLM API 1     │◄───┤        Nginx                    │ │
-│  │   (llm-api-     │    │   (Load Balancer)               │ │
-│  │    service)     │    │   Round-robin                   │ │
-│  │   Port: 5500    │    └─────────────────────────────────┘ │
-│  └─────────────────┘              │                        │
-│                                   │                        │
-│  ┌─────────────────┐              │                        │
-│  │   LLM API 2     │◄─────────────┘                        │
-│  │   (llm-api-     │                                       │
-│  │    service)     │                                       │
-│  │   Port: 5500    │                                       │
-│  └─────────────────┘                                       │
+│  │   LLM API       │◄───┤        Nginx                    │ │
+│  │   (Scalable     │    │   (Load Balancer)               │ │
+│  │    Replicas)    │    │   Round-robin                   │ │
+│  │   Port: 5500    │    │   Auto-scaling                  │ │
+│  │   (2+ instances)│    └─────────────────────────────────┘ │
+│  └─────────────────┘                                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -44,17 +38,16 @@
 
 ### 1. Nginx Reverse Proxy
 - **Сети**: external, internal
-- **Порты**: 80 (HTTP), 443 (HTTPS)
+- **Порты**: 15432 (HTTP)
 - **Функции**:
   - Load balancing между API репликами
-  - SSL/TLS терминация
   - Rate limiting
   - CORS поддержка
   - Health checks
 
 ### 2. LLM API Service Replicas
 - **Сеть**: internal (изолированная)
-- **Количество**: 2 реплики
+- **Количество**: настраивается через `API_REPLICAS` (по умолчанию: 2)
 - **Директория**: `llm-api-service/`
 - **Порты**: 5500 (внутренние)
 - **Функции**:
@@ -62,24 +55,24 @@
   - Health checks
   - Логирование
   - Управление настройками
+  - Автоматическое масштабирование
+- **Управление ресурсами**:
+  - Лимиты памяти: `API_MEMORY_LIMIT` (по умолчанию: 512M)
+  - Резервирование памяти: `API_MEMORY_RESERVATION` (по умолчанию: 256M)
+  - Политика перезапуска при сбоях
 
-### 3. Certbot
-- **Сеть**: external
-- **Функции**:
-  - SSL сертификаты Let's Encrypt
-  - Автоматическое обновление
 
 ## Сети
 
 ### External Network
 - **Тип**: bridge
 - **Доступ**: извне
-- **Сервисы**: nginx, certbot
+- **Сервисы**: nginx
 
 ### Internal Network
 - **Тип**: bridge, internal
 - **Доступ**: только внутри Docker
-- **Сервисы**: nginx, api1, api2
+- **Сервисы**: nginx, api replicas
 
 ## Load Balancing
 
@@ -91,8 +84,7 @@
 ### Конфигурация
 ```nginx
 upstream freegpt4_api {
-    server api1:5500 max_fails=3 fail_timeout=30s;
-    server api2:5500 max_fails=3 fail_timeout=30s;
+    server api:5500 max_fails=3 fail_timeout=60s;
     keepalive 32;
 }
 ```
@@ -109,10 +101,6 @@ upstream freegpt4_api {
 - **Settings**: 5 запросов/минуту
 - **Burst**: 20 запросов
 
-### SSL/TLS
-- **Протоколы**: TLSv1.2, TLSv1.3
-- **Шифры**: Современные ECDHE
-- **HSTS**: Включен
 
 ## Мониторинг
 
@@ -139,12 +127,6 @@ chmod +x scripts/monitor-cluster.sh
 ./scripts/monitor-cluster.sh
 ```
 
-### С SSL
-```bash
-# Запуск с SSL
-chmod +x scripts/start-cluster-ssl.sh
-./scripts/start-cluster-ssl.sh api.example.com admin@example.com
-```
 
 ## Конфигурация
 
@@ -157,9 +139,11 @@ PRIVATE_MODE=false
 PROVIDER=You
 REMOVE_SOURCES=true
 
-# SSL настройки
-SSL_DOMAIN=api.example.com
-SSL_EMAIL=admin@example.com
+# Масштабирование
+API_REPLICAS=2                    # Количество реплик API (по умолчанию: 2)
+API_MEMORY_LIMIT=512M            # Лимит памяти на реплику (по умолчанию: 512M)
+API_MEMORY_RESERVATION=256M      # Резервирование памяти (по умолчанию: 256M)
+
 ```
 
 ### Docker Compose
@@ -168,24 +152,51 @@ version: "3.9"
 services:
   nginx:
     build:
-      context: .
-      dockerfile: nginx/Dockerfile
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
-      - "80:80"
-      - "443:443"
+      - "15432:15432"
+    volumes:
+      - "./logs/nginx:/var/log/nginx:rw"
+      - "./nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
+    depends_on:
+      - api
     networks:
       - external
       - internal
-  
-  api1:
-    build: .
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./llm-api-service
+      dockerfile: Dockerfile
+    volumes:
+      - "./llm-api-service/data:/app/data:rw"
+      - "./logs:/app/logs:rw"
     networks:
       - internal
-  
-  api2:
-    build: .
-    networks:
-      - internal
+      - external
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PROVIDER=${PROVIDER:-You}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5500/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      replicas: ${API_REPLICAS:-2}
+      resources:
+        limits:
+          memory: ${API_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${API_MEMORY_RESERVATION:-256M}
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
 networks:
   external:
@@ -204,7 +215,6 @@ networks:
 
 ### Безопасность
 - Изоляция API от внешнего мира
-- SSL/TLS шифрование
 - Rate limiting
 
 ### Масштабируемость
@@ -239,27 +249,60 @@ docker network inspect external
 docker network inspect internal
 
 # Проверка подключений
-docker exec -it nginx_container ping api1
-docker exec -it nginx_container ping api2
+docker exec -it nginx_container ping api
 ```
 
-### Проблемы с SSL
-```bash
-# Проверка сертификатов
-docker-compose logs certbot
-
-# Обновление сертификатов
-docker-compose run --rm certbot renew
-```
 
 ## Масштабирование
 
-### Добавление реплик
-1. Добавить `api3` в docker-compose.yml
-2. Обновить nginx.conf upstream
-3. Перезапустить сервисы
+### Настройка количества реплик
+Количество реплик API настраивается через переменную окружения `API_REPLICAS`:
+
+```bash
+# Разработка - 1 реплика
+export API_REPLICAS=1
+docker-compose up -d
+
+# Продакшн - 4 реплики
+export API_REPLICAS=4
+docker-compose up -d
+
+# Высокая нагрузка - 8 реплик
+export API_REPLICAS=8
+docker-compose up -d
+```
+
+### Управление ресурсами
+Каждая реплика может иметь ограничения по памяти:
+
+```bash
+# Установка лимитов памяти
+export API_MEMORY_LIMIT=1G
+export API_MEMORY_RESERVATION=512M
+docker-compose up -d
+```
+
+### Мониторинг масштабирования
+```bash
+# Проверка количества запущенных реплик
+docker-compose ps api
+
+# Мониторинг использования ресурсов
+docker stats
+
+# Логи всех реплик
+docker-compose logs -f api
+```
+
+### Автоматическое масштабирование
+Docker Compose автоматически:
+- Создает указанное количество реплик
+- Распределяет нагрузку через Nginx
+- Перезапускает упавшие реплики
+- Управляет ресурсами согласно настройкам
 
 ### Горизонтальное масштабирование
 - Добавить больше nginx инстансов
 - Использовать внешний load balancer
 - Настроить sticky sessions при необходимости
+- Использовать Docker Swarm для кластерного развертывания

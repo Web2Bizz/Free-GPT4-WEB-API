@@ -83,35 +83,58 @@ docker run \
 docker run -p YOUR_PORT:5500 d0ckmg/free-gpt4-web-api:latest
 ```
 
-- docker-compose.yml (cluster with load balancing):
+- docker-compose.yml (cluster with load balancing and scalable replicas):
   ```yaml
   version: "3.9"
   services:
     nginx:
       build:
-        context: .
-        dockerfile: nginx/Dockerfile
+        context: ./nginx
+        dockerfile: Dockerfile
       ports:
-        - "80:80"
-        - "443:443"
+        - "15432:15432"
+      volumes:
+        - "./logs/nginx:/var/log/nginx:rw"
+        - "./nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
+      depends_on:
+        - api
       networks:
         - external
         - internal
-    
-    api1:
+      restart: unless-stopped
+
+    api:
       build:
         context: ./llm-api-service
         dockerfile: Dockerfile
+      volumes:
+        - "./llm-api-service/data:/app/data:rw"
+        - "./logs:/app/logs:rw"
       networks:
         - internal
-    
-    api2:
-      build:
-        context: ./llm-api-service
-        dockerfile: Dockerfile
-      networks:
-        - internal
-  
+        - external
+      environment:
+        - LOG_LEVEL=${LOG_LEVEL:-INFO}
+        - PROVIDER=${PROVIDER:-You}
+      restart: unless-stopped
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:5500/models"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 40s
+      deploy:
+        replicas: ${API_REPLICAS:-2}
+        resources:
+          limits:
+            memory: ${API_MEMORY_LIMIT:-512M}
+          reservations:
+            memory: ${API_MEMORY_RESERVATION:-256M}
+        restart_policy:
+          condition: on-failure
+          delay: 5s
+          max_attempts: 3
+
   networks:
     external:
       driver: bridge
@@ -318,9 +341,6 @@ The project now supports a cluster architecture with load balancing and network 
 chmod +x scripts/start-cluster.sh
 ./scripts/start-cluster.sh
 
-# Start cluster with SSL
-chmod +x scripts/start-cluster-ssl.sh
-./scripts/start-cluster-ssl.sh api.example.com admin@example.com
 
 # Monitor cluster
 chmod +x scripts/monitor-cluster.sh
@@ -329,20 +349,40 @@ chmod +x scripts/monitor-cluster.sh
 
 ### Features
 
-- **2 LLM API replicas** in isolated internal network
+- **Scalable LLM API replicas** (configurable via `API_REPLICAS` environment variable, default: 2)
 - **Nginx reverse proxy** with load balancing
 - **Network isolation** - APIs not accessible from outside
-- **SSL/TLS support** with Let's Encrypt
 - **Health checks** and automatic failover
+- **Resource management** with memory limits and reservations
 - **Rate limiting** and security headers
 - **Modular structure** - Python app in `llm-api-service/` directory
 
 ### Architecture
 
 ```
-Internet → Nginx (external/internal) → LLM API 1 (internal)
-                                → LLM API 2 (internal)
+Internet → Nginx (external/internal) → LLM API Replicas (internal)
 ```
+
+### Scaling Configuration
+
+The cluster supports dynamic scaling through environment variables:
+
+```bash
+# Set number of API replicas (default: 2)
+export API_REPLICAS=4
+
+# Set memory limits
+export API_MEMORY_LIMIT=1G
+export API_MEMORY_RESERVATION=512M
+
+# Start with custom scaling
+docker-compose up -d
+```
+
+**Scaling Examples:**
+- **Development**: `API_REPLICAS=1` (single instance)
+- **Production**: `API_REPLICAS=4` (high availability)
+- **High Load**: `API_REPLICAS=8` (maximum performance)
 
 See `CLUSTER_ARCHITECTURE.md` for detailed documentation.
 

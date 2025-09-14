@@ -1,5 +1,5 @@
 services:
-  # Nginx reverse proxy (in both external and internal networks)
+  # Nginx reverse proxy
   nginx:
     build:
       context: ./nginx
@@ -10,15 +10,14 @@ services:
       - "./logs/nginx:/var/log/nginx:rw"
       - "./nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
     depends_on:
-      - api1
-      - api2
+      - api
     networks:
       - external
       - internal
     restart: unless-stopped
 
-  # First API replica (internal network only)
-  api1:
+  # API service with scalable replicas
+  api:
     build:
       context: ./llm-api-service
       dockerfile: Dockerfile
@@ -33,7 +32,6 @@ services:
       - 8.8.4.4
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FILE=${LOG_FILE:-/app/logs/freegpt4-api1.log}
       - ENABLE_REQUEST_LOGGING=${ENABLE_REQUEST_LOGGING:-false}
       - PRIVATE_MODE=${PRIVATE_MODE:-false}
       - COOKIE_FILE=${COOKIE_FILE:-/app/data/cookies.json}
@@ -42,7 +40,6 @@ services:
     command: [
       "python", "-m", "freegpt4.FreeGPT4_Server",
       "--log-level", "${LOG_LEVEL:-INFO}",
-      "--log-file", "${LOG_FILE:-/app/logs/freegpt4-api1.log}",
       "--cookie-file", "${COOKIE_FILE:-/app/data/cookies.json}",
       "--provider", "${PROVIDER:-You}"
     ]
@@ -53,44 +50,17 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # Second API replica (internal network only)
-  api2:
-    build:
-      context: ./llm-api-service
-      dockerfile: Dockerfile
-    volumes:
-      - "./llm-api-service/data:/app/data:rw"
-      - "./logs:/app/logs:rw"
-    networks:
-      - internal
-      - external
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    environment:
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FILE=${LOG_FILE:-/app/logs/freegpt4-api2.log}
-      - ENABLE_REQUEST_LOGGING=${ENABLE_REQUEST_LOGGING:-false}
-      - PRIVATE_MODE=${PRIVATE_MODE:-false}
-      - COOKIE_FILE=${COOKIE_FILE:-/app/data/cookies.json}
-      - PROVIDER=${PROVIDER:-You}
-      - REMOVE_SOURCES=${REMOVE_SOURCES:-true}
-    command: [
-      "python", "-m", "freegpt4.FreeGPT4_Server",
-      "--log-level", "${LOG_LEVEL:-INFO}",
-      "--log-file", "${LOG_FILE:-/app/logs/freegpt4-api2.log}",
-      "--cookie-file", "${COOKIE_FILE:-/app/data/cookies.json}",
-      "--provider", "${PROVIDER:-You}"
-    ]
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5500/models"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
+    deploy:
+      replicas: ${API_REPLICAS:-2}
+      resources:
+        limits:
+          memory: ${API_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${API_MEMORY_RESERVATION:-256M}
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
 networks:
   external:

@@ -81,15 +81,13 @@ echo -e "${BLUE}Checking service health...${NC}"
 
 # Check containers
 check_container "nginx"
-check_container "api1"
-check_container "api2"
+check_container "api"
 
 echo ""
 
 # Check HTTP endpoints
 echo -e "${BLUE}Checking HTTP endpoints...${NC}"
-check_service "nginx" "80" "/health"
-check_service "nginx" "443" "/health" 2>/dev/null || echo -e "${YELLOW}⚠${NC} HTTPS not available (SSL not configured)"
+check_service "nginx" "15432" "/health"
 
 echo ""
 
@@ -123,7 +121,6 @@ echo ""
 # Show disk usage
 echo -e "${BLUE}Disk usage:${NC}"
 du -sh logs/ 2>/dev/null || echo "No logs directory found"
-du -sh certbot/ 2>/dev/null || echo "No certbot directory found"
 
 echo ""
 
