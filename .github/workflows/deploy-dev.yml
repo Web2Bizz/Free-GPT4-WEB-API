@@ -27,7 +27,8 @@ jobs:
       
       - name: Build dev images
         run: |
-          docker compose -f docker-compose.dev.yml build --no-cache
+          # Build images in parallel with cache
+          docker compose -f docker-compose.dev.yml build --parallel --build-arg BUILDKIT_INLINE_CACHE=1
       
       - name: Start dev environment
         run: |
@@ -142,7 +143,7 @@ jobs:
           git config --local user.name "${{ secrets.GIT_USERNAME }}"
 
           # Create and push tag
-          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION - Auto-generated from dev merge"
+          git tag "$NEW_VERSION"
           git push --tags
           
           echo "Successfully created and pushed tag: $NEW_VERSION"

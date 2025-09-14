@@ -45,7 +45,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -p ${{ secrets.PROD_PORT }} ${{ secrets.PROD_USERNAME }}@${{ secrets.PROD_HOST }} \
           "cd ${{ secrets.PROD_APP_PATH }} && \
-          docker compose build --no-cache"
+          docker compose build --parallel --build-arg BUILDKIT_INLINE_CACHE=1"
 
   start_cluster:
     needs: build_containers
