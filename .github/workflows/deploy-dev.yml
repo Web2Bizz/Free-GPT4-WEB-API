@@ -9,21 +9,17 @@ on:
       - dev
 
 jobs:
-  test_and_deploy_dev:
-    name: Test and Deploy to Dev Environment
+  # Job 1: Test Development Environment
+  test_dev_environment:
+    name: Test Development Environment
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: read
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: dev
-          fetch-depth: 0  # Fetch all branches and history
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up Docker Buildx
@@ -45,14 +41,12 @@ jobs:
       - name: Health check
         run: |
           echo "Checking service health..."
-          # Check if nginx is responding
           curl -f http://localhost:15433/health || exit 1
           echo "Dev environment is healthy!"
       
       - name: Run basic tests
         run: |
           echo "Running basic functionality tests..."
-          # Test API endpoint
           curl -f "http://localhost:15433/?text=Hello" || exit 1
           echo "API tests passed!"
       
@@ -62,9 +56,28 @@ jobs:
           echo "Cleaning up dev environment..."
           docker compose -f docker-compose.dev.yml down -v
           docker system prune -f
+
+  # Job 2: Merge to Main (depends on successful testing)
+  merge_to_main:
+    name: Merge Dev to Main
+    runs-on: ubuntu-latest
+    needs: test_dev_environment
+    if: github.event_name == 'push'
+    
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Auto-merge to main
-        if: success() && github.event_name == 'push'
+      - name: Merge to main
         run: |
           echo "Dev tests passed! Merging to main..."
           git config --local user.email "${{ secrets.GIT_EMAIL }}"
@@ -83,9 +96,27 @@ jobs:
           # Push to main
           git push origin main
           echo "Successfully merged dev to main!"
+
+  # Job 3: Create Version Tag (depends on successful merge)
+  create_version_tag:
+    name: Create Version Tag
+    runs-on: ubuntu-latest
+    needs: merge_to_main
+    if: github.event_name == 'push'
+    
+    permissions:
+      contents: write
+      actions: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Create version tag
-        if: success() && github.event_name == 'push'
         run: |
           echo "Creating version tag..."
           
@@ -109,13 +140,20 @@ jobs:
           
           # Create and push tag
           git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION - Auto-generated from dev merge"
-          git push origin "$NEW_VERSION"
+          git push --tags
           
           echo "Successfully created and pushed tag: $NEW_VERSION"
           echo "This should trigger the production deployment workflow"
-      
-      - name: Notify on failure
-        if: failure()
+
+  # Job 4: Notify on Failure
+  notify_failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [test_dev_environment, merge_to_main, create_version_tag]
+    if: failure()
+    
+    steps:
+      - name: Notify failure
         run: |
           echo "Dev deployment failed! Check the logs above."
-          exit 1
+          echo "Failed job: ${{ needs.test_dev_environment.result || needs.merge_to_main.result || needs.create_version_tag.result }}"
