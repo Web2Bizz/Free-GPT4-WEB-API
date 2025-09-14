@@ -69,7 +69,6 @@ Thumbs.db
 # Logs
 *.log
 logs/*
-!logs/.gitkeep
 
 # Database
 *.db
@@ -105,9 +104,6 @@ certbot/
 *.pem
 *.crt
 *.key
-
-# Nginx logs
-logs/nginx/
 
 # Environment files
 .env
