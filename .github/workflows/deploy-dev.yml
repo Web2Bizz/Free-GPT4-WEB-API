@@ -1,0 +1,90 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  test_and_deploy_dev:
+    name: Test and Deploy to Dev Environment
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0  # Fetch all branches and history
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build dev images
+        run: |
+          docker compose -f docker-compose.dev.yml build --no-cache
+      
+      - name: Start dev environment
+        run: |
+          docker compose -f docker-compose.dev.yml up -d
+      
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start..."
+          sleep 30
+      
+      - name: Health check
+        run: |
+          echo "Checking service health..."
+          # Check if nginx is responding
+          curl -f http://localhost:15433/health || exit 1
+          echo "Dev environment is healthy!"
+      
+      - name: Run basic tests
+        run: |
+          echo "Running basic functionality tests..."
+          # Test API endpoint
+          curl -f "http://localhost:15433/?text=Hello" || exit 1
+          echo "API tests passed!"
+      
+      - name: Cleanup dev environment
+        if: always()
+        run: |
+          echo "Cleaning up dev environment..."
+          docker compose -f docker-compose.dev.yml down -v
+          docker system prune -f
+      
+      - name: Auto-merge to main
+        if: success() && github.event_name == 'push'
+        run: |
+          echo "Dev tests passed! Merging to main..."
+          git config --local user.email "${{ secrets.GIT_EMAIL }}"
+          git config --local user.name "${{ secrets.GIT_USERNAME }}"
+          
+          # Fetch all branches
+          git fetch origin
+          
+          # Checkout main branch
+          git checkout main
+          git pull origin main
+          
+          # Merge dev into main
+          git merge dev --no-ff -m "Auto-merge from dev: ${{ github.sha }}"
+          
+          # Push to main
+          git push origin main
+          echo "Successfully merged dev to main!"
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Dev deployment failed! Check the logs above."
+          exit 1

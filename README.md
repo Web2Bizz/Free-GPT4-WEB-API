@@ -28,6 +28,10 @@ Note: The demo server, when available, can be overloaded and may not always resp
 - Quick start
   - Run with Docker
   - Run from source
+- Development
+  - Development workflow
+  - Local development
+  - Testing
 - Usage
   - Quick examples (browser, curl, Python)
   - File input
@@ -43,7 +47,7 @@ Note: The demo server, when available, can be overloaded and may not always resp
     - Load balancing
     - Network isolation
     - High availability
-    - SSL/TLS support
+    - Scaling
   - Requirements
 - Star history
 - Contributing
@@ -171,6 +175,43 @@ When using the Web GUI, always set a secure password:
 ```bash
 python3 src/FreeGPT4_Server.py --enable-gui --password your_secure_password
 ```
+
+---
+
+## Development
+
+### Development Workflow
+
+This project uses a **feature branch workflow** with automatic testing to ensure production stability:
+
+- **`main`** - Production-ready code (auto-deployed)
+- **`dev`** - Development branch (auto-tested)
+
+### Local Development
+
+Start development environment:
+
+```bash
+# Start dev environment
+chmod +x scripts/start-dev.sh
+./scripts/start-dev.sh
+
+# Test your changes
+curl "http://localhost:15433/?text=Hello"
+
+# Stop dev environment
+./scripts/stop-dev.sh
+```
+
+### Development Process
+
+1. **Create feature branch** from `dev`
+2. **Make changes** and test locally
+3. **Merge to `dev`** and push (triggers auto-testing)
+4. **Auto-merge to `main`** if tests pass
+5. **Auto-deploy to production** from `main`
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development workflow.
 
 ---
 
