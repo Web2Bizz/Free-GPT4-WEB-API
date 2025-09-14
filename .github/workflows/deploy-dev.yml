@@ -91,8 +91,8 @@ jobs:
           git checkout main
           git pull origin main
           
-          # Merge dev into main
-          git merge dev --no-ff -m "Auto-merge from dev: ${{ github.sha }}"
+          # Merge dev into main (fast-forward to avoid merge commits)
+          git merge dev --ff-only
           
           # Push to main
           git push origin main
