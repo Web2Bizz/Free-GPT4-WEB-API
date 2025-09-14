@@ -144,7 +144,7 @@ jobs:
 
           # Create and push tag
           git tag "$NEW_VERSION"
-          git push --tags
+          git push --tags --dry-run
           
           echo "Successfully created and pushed tag: $NEW_VERSION"
           echo "This should trigger the production deployment workflow"
@@ -161,3 +161,16 @@ jobs:
         run: |
           echo "Dev deployment failed! Check the logs above."
           echo "Failed job: ${{ needs.test_dev_environment.result || needs.merge_to_main.result || needs.create_version_tag.result }}"
+  
+  notify_success:
+    name: Notify success
+    runs-on: ubuntu-latest
+    needs: [test_dev_environment, merge_to_main, create_version_tag]
+    if: success()
+    
+    steps:
+      - name: Notify success
+        run: |
+          echo "✅ Dev workflow completed successfully"
+          echo "✅ Tag $NEW_VERSION created"
+          echo "✅ Production deployment should start soon"
