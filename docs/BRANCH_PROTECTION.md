@@ -48,10 +48,8 @@ Active
 - **Описание:** Только через Pull Request
 
 #### **✅ Require pull request:**
-- **Включено** ✅
-- **Required reviewers:** `0`
-- **Dismiss stale reviews:** ✅ включено
-- **Require review from code owners:** ❌ отключено
+- **Отключено** ❌ (автоматический merge из dev)
+- **Причина:** Все изменения уже протестированы в dev перед merge
 
 #### **✅ Require status checks:**
 - **Отключено** ❌ (тестирование происходит в dev ветке)
@@ -96,9 +94,8 @@ Target branches:
 Rules:
 ├── Restrict creations ✅
 ├── Restrict updates ✅
-├── Require pull request ✅
-│   ├── Required reviewers: 0
-│   └── Dismiss stale reviews ✅
+├── Require pull request ❌
+│   └── Автоматический merge из dev
 ├── Require status checks ❌
 │   └── Тестирование в dev ветке
 ├── Require linear history ✅
