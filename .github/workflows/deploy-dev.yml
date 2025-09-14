@@ -106,7 +106,7 @@ jobs:
           fi
           
           # Force push to main (bypassing branch protection rules)
-          git push origin main --force-with-lease
+          git push origin main
           echo "Successfully pushed to main! Force push completed."
 
   # Job 3: Create Version Tag (depends on successful merge)
